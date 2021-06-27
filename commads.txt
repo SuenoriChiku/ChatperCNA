@@ -7,45 +7,52 @@ sudo apt install -y language-pack-ja-base language-pack-ja ibus-mozc
 sudo apt install -y emacs ibus-mozc emacs-mozc cmigemo aspell
 sudo apt install -y x11-apps x11-utils x11-xserver-utils dbus-x11 xautolock xutils-dev
 sudo apt install -y '^fonts-ipafont.*' '^fonts-ipaexfont.*' fonts-monapo  fonts-mikachanfonts-wine fonts-takao fonts-dejavu-core
-echo 'export DISPLAY=$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}'):0.0' >> ~/.bashrc
+echo 'export DISPLAY=$(cat /etc/resolv.conf | grep nameserver | awk '\''{print $2}'\''):0.0' >> ~/.bashrc
 ################################################################################
 # Preparation
 ################################################################################
+# Book scripts------------------------------------------------------------------
+git clone https://github.com/SuenoriChiku/ChatperCNA.git
+mkdir ~/ASCAT
+mv ChatperCNA/* ~/ASCAT
+rmdir ChatperCNA
+chmod +x ~/ASCAT/scripts/*
+ls ~/ASCAT/scripts/
+cp ~/ASCAT/commads.txt /mnt/c/Users/$USER/Documents/
+cp ~/ASCAT/commads.txt ~/Documents
 # R install---------------------------------------------------------------------
 sudo apt update
 sudo apt install r-base
 R
 # R packages--------------------------------------------------------------------
 wget https://cran.r-project.org/src/contrib/RColorBrewer_1.1-2.tar.gz
-sudo R CMD RColorBrewer_1.1-2.tar.gz
+sudo R CMD INSTALL RColorBrewer_1.1-2.tar.gz
 mkdir -p ~/.local/R
-R CMD RColorBrewer_1.1-2.tar.gz
+R CMD INSTALL RColorBrewer_1.1-2.tar.gz
 # Install ASCAT-----------------------------------------------------------------
-mkdir ~/ASCAT; cd ~/ASCAT
-wget https://github.com/Crick-CancerGenomics/ascat/releases/download/v2.5.2/ASCAT_2.5.2.tar.gz
-unzip ascat-2.5.2.zip
+cd ~/ASCAT
+wget https://github.com/VanLoo-lab/ascat/archive/refs/tags/v2.5.2.zip
+unzip v2.5.2.zip
 cd ascat-2.5.2
 sudo R CMD INSTALL ASCAT
 # Download GC contents file-----------------------------------------------------
 mkdir -p ~/ASCAT/UvealMelanoma/misc; cd ~/ASCAT/UvealMelanoma/misc
 wget https://www.crick.ac.uk/sites/default/files/2018-07/GC_Illumina660k_0.zip
 # Install of bedtools-----------------------------------------------------------
-wget https://github.com/arq5x/bedtools2/releases/download/v2.30.0/bedtools.static.binary
+mkdir -p ~/bin
 mv bedtools.static.binary ~/bin/bedtools
+chmod +x ~/bin/bedtools
 # Viewer------------------------------------------------------------------------
 apt install gv eog imagemagick
 # datamash command
 sudo apt install datamash
-# Book scripts------------------------------------------------------------------
-git clone https://github.com/SuenoriChiku/ChatperCNA.git
-mv ChatperCNA/* ~/ASCAT
-ls ~/ASCAT/scripts/
+# brew install datamash
 # Download GEO------------------------------------------------------------------
 mkdir -p ~/ASCAT/LiverMetastasis/GEO
 mv /mnt/c/Users/$USER/Downloads/GSE100787* ~/ASCAT/LiverMetastasis/GEO
 ls ~/ASCAT/LiverMetastasis/GEO
 mkdir -p ~/ASCAT/UvealMelanoma/GEO
-mv /mnt/c/Users/$USER/Downloads/GSE100787* ~/ASCAT/UvealMelanoma/GEO
+mv /mnt/c/Users/$USER/Downloads/GSE44297* ~/ASCAT/UvealMelanoma/GEO
 ls ~/ASCAT/UvealMelanoma/GEO
 # hg19 genome-------------------------------------------------------------------
 cd ~/ASCAT/
@@ -76,6 +83,7 @@ zcat GSM2693297_200698490006_R02C01.array.txt.gz | cut -f 1,17,18,31,32 | less
 mkdir ~/ASCAT/LiverMetastasis/LRR-BAF
 cd ~/ASCAT/LiverMetastasis/LRR-BAF
 ../../scripts/illuminaArray2ASCATinput.pl --prefix LM_Tumor --map ../misc/GSE100787_sampleInfo.txt ../array/*.txt.gz > LM_Tumor.LRR-BAF.log 2>&1
+#../../scripts/illuminaArray2ASCATinput.sh -p LM_Tumor -m ../misc/GSE100787_sampleInfo.txt ../array/*.txt.gz > LM_Tumor.LRR-BAF.log 2>&1
 ls
 wc LM*.txt
 echo 82877550/2367930 | bc -l

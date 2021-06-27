@@ -17,8 +17,9 @@ if ( -f "$FindBin::Bin/utilities.pl" ) {
 {
     my $prefix = "ASCAT";
     my $sampleMapFile = "";
-    GetOptions('prefix=s' => \$prefix, 'map=s'=>\$sampleMapFile);
-    illuminaArray2ASCATinput( $prefix, $sampleMapFile, \@ARGV );
+    my $tagOff = 0;
+    GetOptions('prefix=s' => \$prefix, 'map=s'=>\$sampleMapFile, 'tag-off'=>\$tagOff);
+    illuminaArray2ASCATinput( $prefix, $sampleMapFile, $tagOff, \@ARGV );
 }
 exit(0);
 
@@ -28,12 +29,12 @@ exit(0);
 # usage
 sub usage {
     print STDERR "Usage:\n";
-    print STDERR "./illuminaArray2ASCATinput.pl [--prefix LM] [--map GSE44297_SampleMap.txt] *array.txt.gz\n";
+    print STDERR "./illuminaArray2ASCATinput.pl [--prefix LM] [--map GSE44297_SampleMap.txt] [--tag-off] *array.txt.gz\n";
     exit(1);
 }
 
 sub illuminaArray2ASCATinput {
-    my ( $prefix, $sampleMapFile, $arrayFiles ) = @_;
+    my ( $prefix, $sampleMapFile, $tagOff, $arrayFiles ) = @_;
 
     # $idMap{orgID} = newID
     my %idMap;
@@ -64,15 +65,22 @@ sub illuminaArray2ASCATinput {
 	push(@chrPos,[($rs,$$ref[0],$$ref[1],$$ref[2])]);
     }
     print STDERR "Sorting...\n";
-    @chrPos = sort{$a->[1] <=> $b->[1] || $a->[2] <=> $b->[2]} @chrPos;
+    @chrPos = sort{$a->[1] <=> $b->[1] || $a->[2] <=> $b->[2] || $a->[0] cmp $b->[0]} @chrPos;
 
     my $lrrFile = $prefix . "_LogR.txt";
     print STDERR "Outputing $lrrFile...\n";
-    outputASCATinput( $lrrFile, \@sampleIDs, \@chrPos, \@lbData, 0 );
-
+    if ( $tagOff ) {
+	outputASCATdataOnly( $lrrFile, \@sampleIDs, \@chrPos, \@lbData, 0 );
+    } else {
+	outputASCATinput( $lrrFile, \@sampleIDs, \@chrPos, \@lbData, 0 );
+    }
     my $bafFile = $prefix . "_BAF.txt";
     print STDERR "Outputing $bafFile...\n";
-    outputASCATinput( $bafFile, \@sampleIDs, \@chrPos, \@lbData, 1 );
+    if ( $tagOff ) {
+	outputASCATdataOnly( $bafFile, \@sampleIDs, \@chrPos, \@lbData, 1 );
+    } else {
+	outputASCATinput( $bafFile, \@sampleIDs, \@chrPos, \@lbData, 1 );
+    }
 }
 
 sub readGenomeStudioOutput {
@@ -152,6 +160,22 @@ sub readGenomeStudioOutput {
 	$$lbData[$j][$i][1] = $terms[$b];
     }
     close( $in );
+}
+
+sub outputASCATdataOnly {
+    my ( $outFile, $sampleIDs, $chrPos, $lbData, $p ) = @_;
+
+    open( OUT, "> $outFile") || die "Cannot open $outFile\n";
+    outputTSVLine( \*OUT, $sampleIDs );
+    foreach my $record ( @$chrPos ) {
+	my $j = $$record[3];
+	print OUT "$$lbData[$j][0][$p]";
+	for( my $i = 1; $i < @{$$lbData[$j]}; $i++ ) {
+	    print OUT "\t$$lbData[$j][$i][$p]";
+	}
+	print OUT "\n";
+    }
+    close(OUT);
 }
 
 sub outputASCATinput {
