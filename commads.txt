@@ -1,0 +1,214 @@
+################################################################################
+# Ubuntu and VcXsrv
+################################################################################
+sudo apt update
+sudo apt upgrade -y
+sudo apt install -y language-pack-ja-base language-pack-ja ibus-mozc
+sudo apt install -y emacs ibus-mozc emacs-mozc cmigemo aspell
+sudo apt install -y x11-apps x11-utils x11-xserver-utils dbus-x11 xautolock xutils-dev
+sudo apt install -y '^fonts-ipafont.*' '^fonts-ipaexfont.*' fonts-monapo  fonts-mikachanfonts-wine fonts-takao fonts-dejavu-core
+echo 'export DISPLAY=$(cat /etc/resolv.conf | grep nameserver | awk '\''{print $2}'\''):0.0' >> ~/.bashrc
+################################################################################
+# Preparation
+################################################################################
+# Book scripts------------------------------------------------------------------
+git clone https://github.com/SuenoriChiku/ChatperCNA.git
+mv ChatperCNA ~/ASCAT
+chmod +x ~/ASCAT/scripts/*
+ls ~/ASCAT/scripts/
+cp ~/ASCAT/commands.txt /mnt/c/Users/$USER/Documents/
+cp ~/ASCAT/commands.txt ~/Documents
+# R install---------------------------------------------------------------------
+sudo apt update
+sudo apt install r-base
+R
+# R packages--------------------------------------------------------------------
+wget https://cran.r-project.org/src/contrib/RColorBrewer_1.1-2.tar.gz
+sudo R CMD INSTALL RColorBrewer_1.1-2.tar.gz
+mkdir -p ~/.local/R
+R CMD INSTALL RColorBrewer_1.1-2.tar.gz
+# Install ASCAT-----------------------------------------------------------------
+cd ~/ASCAT
+wget https://github.com/VanLoo-lab/ascat/archive/refs/tags/v2.5.2.zip
+unzip v2.5.2.zip
+cd ascat-2.5.2
+sudo R CMD INSTALL ASCAT
+# Download GC contents file-----------------------------------------------------
+mkdir -p ~/ASCAT/UvealMelanoma/misc; cd ~/ASCAT/UvealMelanoma/misc
+wget https://www.crick.ac.uk/sites/default/files/2018-07/GC_Illumina660k_0.zip
+# Install of bedtools-----------------------------------------------------------
+mkdir -p ~/bin
+mv bedtools.static.binary ~/bin/bedtools
+chmod +x ~/bin/bedtools
+# Viewer------------------------------------------------------------------------
+apt install gv eog imagemagick
+# datamash command
+sudo apt install datamash
+# brew install datamash
+# Download GEO------------------------------------------------------------------
+mkdir -p ~/ASCAT/LiverMetastasis/GEO
+mv /mnt/c/Users/$USER/Downloads/GSE100787* ~/ASCAT/LiverMetastasis/GEO
+ls ~/ASCAT/LiverMetastasis/GEO
+mkdir -p ~/ASCAT/UvealMelanoma/GEO
+mv /mnt/c/Users/$USER/Downloads/GSE44297* ~/ASCAT/UvealMelanoma/GEO
+ls ~/ASCAT/UvealMelanoma/GEO
+# hg19 genome-------------------------------------------------------------------
+cd ~/ASCAT/
+wget https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz
+gunzip hg19.fa.gz
+samtools  faidx  hg19.fa
+################################################################################
+# LiverMetastasis
+################################################################################
+cd ~/ASCAT/LiverMetastasis/GEO
+zcat GSE100787_family.soft.gz | grep ! > GSE100787_family.soft.tags
+less GSE100787_family.soft.tags
+grep -e Sample_geo_accession GSE100787_family.soft.tags | sed -e 's/!Sample_geo_accession = //' > tmp1.txt
+grep -e "sample_id_in the manuscript:" GSE100787_family.soft.tags | sed -e 's/.*sample_id_in the manuscript: /LM/' > tmp2.txt
+grep -e "Sample_characteristics_ch1 = tissue: " GSE100787_family.soft.tags | sed -e 's/.*Sample_characteristics_ch1 = tissue: //' > tmp3.txt
+grep -e "array.txt.g" GSE100787_family.soft.tags | sed -e 's/.*GSM[0-9]*_//' | sed -e 's/_R.*//' > tmp4.txt
+echo -e 'Accession\tSampleID\ttissue\tchip' > GSE100787_sampleInfo.txt
+paste tmp1.txt tmp2.txt tmp3.txt tmp4.txt >> GSE100787_sampleInfo.txt
+mkdir ../misc; mv GSE100787_sampleInfo.txt ../misc
+\rm tmp*.txt
+mkdir ../array
+tar xvfz GSE100787_RAW.tar.gz -C ../array --wildcards "*array.txt.gz"
+less ../array/GSM2693300_200698490088_R05C01.array.txt.gz
+zcat ../array/GSM2693297_200698490006_R02C01.array.txt.gz | grep -m 1 Forward | sed -e 's/\t/\n/g' | cat -n > ../misc/arrayColumns.txt
+cd ../array/
+zcat GSM2693297_200698490006_R02C01.array.txt.gz | cut -f 1,17,18,31,32 | less
+# Make LRR and BAF--------------------------------------------------------------
+mkdir ~/ASCAT/LiverMetastasis/LRR-BAF
+cd ~/ASCAT/LiverMetastasis/LRR-BAF
+../../scripts/illuminaArray2ASCATinput.pl --prefix LM_Tumor --map ../misc/GSE100787_sampleInfo.txt ../array/*.txt.gz > LM_Tumor.LRR-BAF.log 2>&1
+#../../scripts/illuminaArray2ASCATinput.sh -p LM_Tumor -m ../misc/GSE100787_sampleInfo.txt ../array/*.txt.gz > LM_Tumor.LRR-BAF.log 2>&1
+ls
+wc LM*.txt
+echo 82877550/2367930 | bc -l
+# GC for 2.5K-------------------------------------------------------------------
+mkdir ~/ASCAT/LiverMetastasis/GC
+cd ~/ASCAT/LiverMetastasis/GC
+cut -f 1-3 ../LRR-BAF/LM_Tumor_BAF.txt | tail -n +2 > Omni2.5pos.txt
+cp ../../ascat-2.5.2/gcProcessing/hg19.chrom.sizes ../misc/
+../../scripts/GCfileCreation.sh Omni2.5pos.txt ../misc/hg19.chrom.sizes 6 hg19.fa > GCfileCreation.log 2>&1 &
+# Gender check------------------------------------------------------------------
+cd ~/ASCAT/LiverMetastasis/PCA/LRR-BAF
+grep -e SNPid LM_Tumor_LogR.txt > LM_LogR.txt
+grep -P -e "\tY\t" LM_Tumor_LogR.txt >> LM_LogR.txt
+grep -e SNPid -e "        X        " LM_Tumor_BAF.txt > LM_BAF.txt
+../../scripts/estimateGender.R -l LM_Tumor_LogR.txt LM_Tumor_BAF.txt -t png
+mv LM_Tumor.gender.* ../misc
+eog LM_Tumor.gender.png
+cp LM_Tumor.gender.png /mnt/c/Users/${USER}/Documents/
+cp LM_Tumor.gender.png ~/Documents
+# Bias analysis-----------------------------------------------------------------
+mkdir ~/ASCAT/LiverMetastasis/PCA; cd ~/ASCAT/LiverMetastasis/PCA/
+../../scripts/exeSVD.R -n 4 ../LRR-BAF/LM_Tumor_LogR.txt -t png
+../../scripts/plotPCAscatter.R ../misc/GSE100787_sampleInfo.txt LM_Tumor_OrgProbe.v -t png
+../../scripts/plotPCAscatter.R ../misc/GSE100787_sampleInfo.txt LM_Tumor_OrgSample.u -t png
+../../scripts/plotPCAscatter.R ../misc/GSE100787_sampleInfo.txt LM_Tumor_ScaProbe.v -t png
+../../scripts/plotPCAscatter.R ../misc/GSE100787_sampleInfo.txt LM_Tumor_ScaSample.u -t png
+ls
+# Execute ASCAT without germline LRR and BAF------------------------------------
+mkdir ~/ASCAT/LiverMetastasis/ASCAT; cd ~/ASCAT/LiverMetastasis/ASCAT
+../../scripts/exeASCAT.R -c ../GC/GC_Omni2.5pos.txt -n ../misc/LM_Tumor.gender.txt -p Illumina2.5M ../LRR-BAF/LM_Tumor_LogR.txt ../LRR-BAF/LM_Tumor_BAF.txt > LM_ASCAT.log 2>&1 &
+mkdir PNG PCFed
+mv *.png PNG; mv *PCFed.txt PCFed
+ls
+ls PNG/*LM1T*
+# Post analyses-----------------------------------------------------------------
+../../scripts/addProbeInfoSegment.pl -c ../misc/centromeres.txt ../GC/GC_Omni2.5pos.txt LM_Tumor.segments > LM_Tumor.segments.txt
+cd ~/ASCAT/LiverMetastasis/misc
+wget http://hgdownload.cse.ucsc.edu/goldenPath/hg19/database/cytoBand.txt.gz
+zcat cytoBand.txt.gz | grep acen | grep p | cut -f 1,3 > centromeres.txt
+../../scripts/makeCNVmatrix.pl LM_Tumor.segments.txt > LM_Tumor.matrix
+../../scripts/countCnvMatrix.pl LM_Tumor.matrix > LM_Tumor.count
+../../scripts/plotChrCNAhist.R -l ../misc/hg19.chrom.sizes LM_Tumor.count -t pdf
+../../scripts/dendrogramCNA.R LM_Tumor.matrix -t pdf
+../../scripts/colorOrderCNA.R -l ../misc/hg19.chrom.sizes LM_TumorDendrogramEuclWard.order LM_Tumor.segments -t pdf
+gv LM_TumorDendrogramEuclWard.OrderCNA.pdf
+# Make pair data----------------------------------------------------------------
+cd ~/ASCAT/LiverMetastasis/LRR-BAF
+cut -f 1-3,6-7 LM_Tumor_BAF.txt | sed -e 's/LM7/mLM7/g' > mLM7MT_Tumor_BAF.txt
+cut -f 1-3,6-7 LM_Tumor_LogR.txt | sed -e 's/LM7/mLM7/g' > mLM7MT_Tumor_LogR.txt
+cd ~/ASCAT/LiverMetastasis/misc
+grep -e gender -e LM7M -e LM7T LM_Tumor.gender.txt | sed -e 's/LM7/mLM7/' > mLM7MT_Tumor.gender.txt
+# Execute pair ASCAT------------------------------------------------------------
+mkdir ~/ASCAT/LiverMetastasis/ASCATmulti; cd ~/ASCAT/LiverMetastasis/ASCATmulti
+../../scripts/exeASCAT.R -c ../GC/GC_Omni2.5pos.txt -n ../misc/mLM7MT_Tumor.gender.txt -p Illumina2.5M -m ../LRR-BAF/mLM7MT_Tumor_LogR.txt ../LRR-BAF/mLM7MT_Tumor_BAF.txt > mLM7MT.ASCAT.log 2>&1 &
+mkdir PNG PCFed
+mv *.png PNG; mv *PCFed.txt PCFed
+# Post analyses-----------------------------------------------------------------
+cp mLM7MT_Tumor.segments mLM7MT_Tumor.segments.org
+grep LM7 ../ASCAT/LM_Tumor.segments >> mLM7MT_Tumor.segments
+touch mLM7MT.segments.n
+echo -en "LM7T\t" >> mLM7MT.segments.n; grep -c LM7T ../ASCAT/LM_Tumor.segments >> mLM7MT.segments.n
+echo -en "LM7M\t" >> mLM7MT.segments.n; grep -c LM7M ../ASCAT/LM_Tumor.segments >> mLM7MT.segments.n
+echo -en "mLM7T\t" >> mLM7MT.segments.n; grep -c mLM7T mLM7MT_Tumor.segments.org >> mLM7MT.segments.n
+echo -en "mLM7M\t" >> mLM7MT.segments.n; grep -c mLM7M mLM7MT_Tumor.segments.org >> mLM7MT.segments.n
+../../scripts/addProbeInfoSegment.pl -c ../misc/centromeres.txt ../GC/GC_Omni2.5pos.txt mLM7MT_Tumor.segments > mLM7MT_Tumor.segments.txt
+../../scripts/makeCNVmatrix.pl mLM7MT_Tumor.segments.txt > mLM7MT_Tumor.matrix
+../../scripts/countCnvMatrix.pl mLM7MT_Tumor.matrix > mLM7MT_Tumor.count
+../../scripts/plotChrCNAhist.R -l ../misc/hg19.chrom.sizes mLM7MT_Tumor.count -t pdf
+../../scripts/dendrogramCNA.R mLM7MT_Tumor.matrix -t pdf
+../../scripts/colorOrderCNA.R -l ../misc/hg19.chrom.sizes mLM7MT_TumorDendrogramEuclWard.order mLM7MT_Tumor.segments -t pdf
+################################################################################
+# UvealMelanoma
+################################################################################
+cd ~/ASCAT/UvealMelanoma/GEO
+zcat GSE44297_family.soft.gz | grep ! > GSE44297_family.soft.tags
+less GSE44297_family.soft.tags
+grep -e Sample_title -e Sample_geo_accession -e Sample_source_name_ch1 -e gender: GSE44297_family.soft.tags > GSE44297_sampleList.txt
+less GSE44297_sampleList.txt
+mkdir ../misc
+zcat GSE44297_series_matrix.txt.gz | grep -e Sample_geo_accession -e Sample_title -e Sample_source_name_ch1 -e gender | sed -e 's/\"//g' | sed -e 's/\!//g' | sed -e 's/660w/660W/g' | datamash transpose | sed -e 's/.*Asingh/Asingh/' | sed -e 's/gender: //' | sed -e 's/Sample_geo_//' | sed -e 's/Sample_source_name_ch1/cellType/' | sed -e 's/Sample_characteristics_ch1/gender/' > ../misc/GSE44297_sampleInfo.txt
+less ../misc/GSE44297_sampleInfo.txt
+# GC for 660K-------------------------------------------------------------------
+cd ~/ASCAT/UvealMelanoma/misc
+mv path/to/GC_Illumina660k_0.zip .
+unzip GC_Illumina660k_0.zip
+# Make LRR and BAF--------------------------------------------------------------
+mkdir ~/ASCAT/UvealMelanoma/LRR-BAF; cd ~/ASCAT/UvealMelanoma/LRR-BAF
+../../scripts/illuminaMatrix2ASCATinput.pl --prefix UM --map ../misc/GSE44297_sampleInfo.txt --pos ../misc/GC_Illumina660k.txt ../GEO/GSE44297_Genotype_Matrix_processed.csv.gz |& tee illuminaMatrix2ASCATinput.log
+ls
+# Gender check------------------------------------------------------------------
+cd ~/ASCAT/UvealMelanoma/misc
+grep -e SNPid -e "        X        " ../LRR-BAF/UM_Tumor_BAF.txt > UM_BAF.txt
+../../scripts/estimateGender.R UM_BAF.txt -t png
+cut -f 1,2 UM.gender.txt | grep -v gender | sed -e 's/XY/M/' -e 's/XX/F/' | sort > est.txt
+cut -f 2,4 GSE44297_sampleInfo.txt | grep -v -e Sample_characteristics -e gender | sort > info.txt
+ diff info.txt est.txt | grep "<" | grep -v unknown
+# Bias analysis-----------------------------------------------------------------
+mkdir ~/ASCAT/UvealMelanoma/PCA; cd ~/ASCAT/UvealMelanoma/PCA
+../../scripts/exeSVD.R -n 4 ../LRR-BAF/UM_Tumor_LogR.txt -t png
+../../scripts/plotPCAscatter.R ../misc/GSE44297_sampleInfo.txt UM_Tumor_OrgProbe.v -t png
+../../scripts/plotPCAscatter.R ../misc/GSE44297_sampleInfo.txt UM_Tumor_OrgSample.u -t png
+../../scripts/plotPCAscatter.R ../misc/GSE44297_sampleInfo.txt UM_Tumor_ScaProbe.v -t png
+../../scripts/plotPCAscatter.R ../misc/GSE44297_sampleInfo.txt UM_Tumor_ScaSample.u -t png
+# Execute ASCAT with germline LRR and BAF---------------------------------------
+mkdir ~/ASCAT/UvealMelanoma/ASCATwithGermline; cd ~/ASCAT/UvealMelanoma/ASCATwithGermline
+../../scripts/exeASCAT.R -c ../misc/GC_Illumina660k.txt -n ../misc/UM.gender.txt ../LRR-BAF/UM_Tumor_LogR.txt ../LRR-BAF/UM_Tumor_BAF.txt -l ../LRR-BAF/UM_Germline_LogR.txt -b ../LRR-BAF/UM_Germline_BAF.txt > UMvsGermline.log 2>&1 &
+mkdir PNG PCFed
+mv *.png PNG; mv *PCFed.txt PCFed
+ls
+# Post analyses-----------------------------------------------------------------
+../../scripts/addProbeInfoSegment.pl -c ~/ASCAT/LiverMetastasis/misc/centromeres.txt ../misc/GC_Illumina660k.txt UM_Tumor.segments > UM_Tumor.segments.txt
+../../scripts/makeCNVmatrix.pl UM_Tumor.segments.txt > UM_Tumor.matrix
+../../scripts/countCnvMatrix.pl UM_Tumor.matrix > UM_Tumor.count
+../../scripts/plotChrCNAhist.R -l ~/ASCAT/LiverMetastasis/misc/hg19.chrom.sizes UM_Tumor.count -t pdf
+../../scripts/dendrogramCNA.R UM_Tumor.matrix -t pdf
+../../scripts/colorOrderCNA.R -l ~/ASCAT/LiverMetastasis/misc/hg19.chrom.sizes UM_TumorDendrogramEuclWard.order UM_Tumor.segments -t pdf
+mkdir ~/ASCAT/UvealMelanoma/ASCATestimated; cd ~/ASCAT/UvealMelanoma/ASCATestimated
+# Execute ASCAT without germline LRR and BAF------------------------------------
+../../scripts/exeASCAT.R -c ../misc/GC_Illumina660k.txt -n ../misc/UM.gender.txt -p Illumina660k ../LRR-BAF/UM_Tumor_LogR.txt ../LRR-BAF/UM_Tumor_BAF.txt > UMestimated.log 2>&1 &
+mkdir PNG PCFed
+mv *.png PNG; mv *PCFed.txt PCFed
+ls
+# Post analyses-----------------------------------------------------------------
+../../scripts/addProbeInfoSegment.pl -c ~/ASCAT/LiverMetastasis/misc/centromeres.txt ../misc/GC_Illumina660k.txt UM_Tumor.segments > UM_Tumor.segments.txt
+../../scripts/makeCNVmatrix.pl UM_Tumor.segments.txt > UM_Tumor.matrix
+../../scripts/countCnvMatrix.pl UM_Tumor.matrix > UM_Tumor.count
+../../scripts/plotChrCNAhist.R -l ~/ASCAT/LiverMetastasis/misc/hg19.chrom.sizes UM_Tumor.count -t pdf
+../../scripts/dendrogramCNA.R UM_Tumor.matrix -t pdf
+../../scripts/colorOrderCNA.R -l ~/ASCAT/LiverMetastasis/misc/hg19.chrom.sizes UM_TumorDendrogramEuclWard.order UM_Tumor.segments -t pdf
+ls ascat-2.5.2/ExampleData/
