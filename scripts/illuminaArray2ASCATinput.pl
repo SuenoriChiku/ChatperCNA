@@ -68,14 +68,14 @@ sub illuminaArray2ASCATinput {
     @chrPos = sort{$a->[1] <=> $b->[1] || $a->[2] <=> $b->[2] || $a->[0] cmp $b->[0]} @chrPos;
 
     my $lrrFile = $prefix . "_LogR.txt";
-    print STDERR "Outputing $lrrFile...\n";
+    print STDERR "Outputting $lrrFile...\n";
     if ( $tagOff ) {
 	outputASCATdataOnly( $lrrFile, \@sampleIDs, \@chrPos, \@lbData, 0 );
     } else {
 	outputASCATinput( $lrrFile, \@sampleIDs, \@chrPos, \@lbData, 0 );
     }
     my $bafFile = $prefix . "_BAF.txt";
-    print STDERR "Outputing $bafFile...\n";
+    print STDERR "Outputting $bafFile...\n";
     if ( $tagOff ) {
 	outputASCATdataOnly( $bafFile, \@sampleIDs, \@chrPos, \@lbData, 1 );
     } else {

@@ -75,15 +75,15 @@ sub illuminaMatrix2ASCATinput {
     @chrPos = sort{$a->[1] <=> $b->[1] || $a->[2] <=> $b->[2]} @chrPos;
 
     my $lrrFile = $prefix . "_Tumor_LogR.txt";
-    print STDERR "Outputing $lrrFile...\n";
+    print STDERR "Outputting $lrrFile...\n";
     outputASCATinput( $lrrFile, \@sampleIDs, \@chrPos, \@lbData, 0 );
     my $bafFile = $prefix . "_Tumor_BAF.txt";
-    print STDERR "Outputing $bafFile...\n";
+    print STDERR "Outputting $bafFile...\n";
     outputASCATinput( $bafFile, \@sampleIDs, \@chrPos, \@lbData, 1 );
     # Germline
     $lrrFile = $prefix . "_Germline_LogR.txt";
     $bafFile = $prefix . "_Germline_BAF.txt";
-    print STDERR "Outputing $lrrFile and $bafFile...\n";
+    print STDERR "Outputting $lrrFile and $bafFile...\n";
     outputGermlineInput( $lrrFile, $bafFile, \@sampleIDs, \@chrPos, \@lbData );
 }
 
