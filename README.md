@@ -1,8 +1,14 @@
-# ChatperCNA
-Scripts and miscellaneous for the chapter of analysis of copy number aberrations
+# がんゲノムデータ解析
+## 第4章 がんのCNV検出
+## SNPアレイによる転移性肝がん, およびメラノーマのコピー数変異検出
+
+本章で使うスクリプトや補助ファイルです。
 
 scripts:
-Perl, R and shell scripts for the CNA chapter
+Perl, R, shスクリプトがあります。
 
 misc:
-Miscellaneous files
+セントロメア位置やゲノムのfasta.faiファイルがあります。細かなツールのインストールが面倒な場合にご使用ください。
+
+commands.txt:
+本書で使うコマンドのリストです。全てを手打ちで入力するのは困難だと思います。
